@@ -45,35 +45,46 @@ company = st.selectbox(
     ("Amazon", "Meta", "Udemy", "365 Company", "Nestle", "LinkedIn", "Spotify", "Eurotech Associates Inc")
 )
 
-# Test labels for company and position information
+
 st.write(f"**Your information**: {level} {position} at {company}")
 
-# Initializing the OpenAI client using the API key from Streamlit's secrets
-if open_ai_key !="":
+def validate_api_key(open_ai_key):
+    try:
+        client = OpenAI(api_key=open_ai_key)
+        _ = client.models.list()
+        return True
+    except:
+        return False
+
+if validate_api_key(open_ai_key):
     client = OpenAI(api_key=open_ai_key)
     max_tokens_input = st.sidebar.slider("Max Output Tokens", min_value=10, max_value=4000, value=500) 
     #client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+else:
+    st.warning("Valid Open AI key is required to proceed.")
+    st.stop() 
 
 
-# Setting up the OpenAI model in session state if it is not already defined
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-4o-mini"
 
-# Initializing the 'messages' list and adding a system message
+
 #if "messages" not in st.session_state:
 st.session_state.messages = [{"role":"system", "content": f"You are an HR executive that interviews an interviewee called {name} with expirience {experience} and skills {skills}. You should interview him for the position {level} {position} at the company {company}"}]
 
-# Looping through the 'messages' list to display each message except system messages
+
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# Input field for the user to send a new message
+
 if prompt := st.chat_input("Your answer."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
+
+try:
 
     # Assistant's response
     with st.chat_message("assistant"):
@@ -87,8 +98,12 @@ if prompt := st.chat_input("Your answer."):
             max_tokens=max_tokens_input,
             temperature=0.7,
         )
+       
         # Display the assistant's response as it streams
         response = st.write_stream(stream)
-    # Append the assistant's full response to the 'messages' list
+          
+      
     st.session_state.messages.append({"role": "assistant", "content": response})
-
+except Exception as e:
+    st.exception(e)
+    st.error("An unexpected error occurred. Please try again later.")
